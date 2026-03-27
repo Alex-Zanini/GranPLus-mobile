@@ -1,9 +1,9 @@
 import {View, Text} from "react-native"
 
-export default function Entradas(){
+export default function Usuarios(){
     return (
         <View>
-            <Text>Entradas</Text>
+            <Text>Usuários</Text>
         </View>
     )
 }
