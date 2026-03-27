@@ -1,18 +1,21 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-
-import Home from '../telas/home'; 
-import Entradas from '../telas/entradas';
+import Dashboard from '../telas/dashboard';
 import Produtos from '../telas/produtos';
-import Saidas from '../telas/saidas';
+import Estoque from '../telas/estoque';
+import Usuarios from '../telas/usuarios';
+const Tab = createBottomTabNavigator();
 
-export default function MyTabs() {
-    const Tab = createBottomTabNavigator();
+export default function MainTabs() {
   return (
-    <Tab.Navigator>
-      <Tab.Screen name="Home" component={Home} />
-      <Tab.Screen name="Entradas" component={Entradas} />
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Tab.Screen name="Dashboard" component={Dashboard} />
       <Tab.Screen name="Produtos" component={Produtos} />
-      <Tab.Screen name="Saidas" component={Saidas} />
+      <Tab.Screen name="Estoque" component={Estoque} />
+      <Tab.Screen name="Usuarios" component={Usuarios} />
     </Tab.Navigator>
   );
 }

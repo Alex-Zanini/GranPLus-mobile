@@ -40,7 +40,7 @@ function hojeISO() {
     return new Date().toISOString().slice(0, 10);
 }
 
-export default function Entradas(){
+export default function Usuarios(){
 
     const [locId, setLocId] = useState('1');
     const [fncdId, setFncdId] = useState('1');
@@ -270,4 +270,5 @@ export default function Entradas(){
             </View>
         </ScrollView>
     );
+
 }
