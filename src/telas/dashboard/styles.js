@@ -3,55 +3,56 @@ import { StyleSheet } from "react-native";
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#1e3a5f", // Azul escuro
+    padding: 16,
+    backgroundColor: "#F2F5F9",
   },
   header: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-    color: "#ffffff", // Branco
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 4,
+    color: "#1E293B",
   },
   subHeader: {
-    fontSize: 16,
-    marginBottom: 10,
-    color: "#ffffff", // Branco
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 8,
+    marginBottom: 8,
+    color: "#64748B",
   },
   itemContainer: {
     marginBottom: 10,
-    padding: 10,
-    backgroundColor: "#ffffff", // Branco
-    borderRadius: 5,
+    padding: 14,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
   itemText: {
     fontSize: 14,
-    color: "#1e3a5f", // Azul escuro
+    color: "#475569",
   },
   dailySummaryContainer: {
     marginBottom: 20,
-    padding: 10,
-    backgroundColor: "#ffffff", // Branco
-    borderRadius: 5,
+    padding: 14,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   dailySummaryText: {
-    fontSize: 16,
-    color: "#1e3a5f", // Azul escuro
+    fontSize: 14,
+    color: "#334155",
     marginBottom: 5,
-  },
-  input: {
-    height: 40,
-    borderColor: "#ffffff",
-    borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    marginBottom: 20,
-    color: "#ffffff",
-    backgroundColor: "#1e3a5f",
   },
 });
 
