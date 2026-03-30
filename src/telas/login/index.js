@@ -17,7 +17,7 @@ export default function Login() {
 
     function handleLogin() {
         if (username === "Admin" && password === storedPassword) {
-            navigation.navigate("MyTabs");
+            navigation.navigate("MainTabs");
         } else {
             Alert.alert("Login inválido", "Usuário ou senha incorretos.");
         }
