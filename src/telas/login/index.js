@@ -1,25 +1,59 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, TextInput, Alert } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, Alert, Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import styles from "./styles";
 
+const API_URL = Platform.OS === "android" ? "http://10.0.2.2:3333" : "http://localhost:3333";
+
 export default function Login() {
     const navigation = useNavigation();
-    const [username, setUsername] = useState("Admin");
-    const [password, setPassword] = useState("admin123"); // campo digitado
-    const [storedPassword, setStoredPassword] = useState("admin123"); // senha válida atual
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
     const [isResetMode, setIsResetMode] = useState(false);
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
-    function handleLogin() {
-        if (username === "Admin" && password === storedPassword) {
-            navigation.navigate("MainTabs");
-        } else {
-            Alert.alert("Login inválido", "Usuário ou senha incorretos.");
+    async function handleLogin() {
+        if (!username.trim() || !password.trim()) {
+            Alert.alert("Campos obrigatórios", "Informe usuário e senha.");
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+
+            const response = await fetch(`${API_URL}/usuarios/login`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    user_nome: username.trim(),
+                    user_senha: password,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                Alert.alert("Login inválido", data?.erro || "Usuário ou senha incorretos.");
+                return;
+            }
+
+            navigation.navigate("MainTabs", {
+                auth: {
+                    token: data.token,
+                    usuario: data.usuario,
+                },
+            });
+        } catch (error) {
+            Alert.alert("Erro de conexão", "Não foi possível conectar com a API.");
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -46,10 +80,9 @@ export default function Login() {
             return;
         }
 
-        setStoredPassword(newPassword);
         setPassword(newPassword);
         setIsResetMode(false);
-        Alert.alert("Sucesso", "Senha alterada com sucesso.");
+        Alert.alert("Atenção", "A redefinição local não altera a senha no servidor.");
     }
 
     return (
@@ -147,8 +180,9 @@ export default function Login() {
             <TouchableOpacity
                 style={styles.button}
                 onPress={handleLogin}
+                disabled={isLoading}
             >
-                <Text style={styles.buttonText}>Entrar</Text>
+                <Text style={styles.buttonText}>{isLoading ? "Entrando..." : "Entrar"}</Text>
             </TouchableOpacity>
         </View>
     );
