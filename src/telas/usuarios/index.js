@@ -1,274 +1,441 @@
-import { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    Alert,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+	ActivityIndicator,
+	RefreshControl,
+	Alert,
+	Modal,
+	ScrollView,
+	TextInput,
+	Text,
+	TouchableOpacity,
+	View,
+	Platform,
 } from 'react-native';
-
 import styles from './styles';
 
-const fornecedoresMock = [
-    { fncd_id: '1', fncd_nome: 'Super Distribuidora LTDA' },
-    { fncd_id: '2', fncd_nome: 'Mercantil São Paulo' },
-    { fncd_id: '3', fncd_nome: 'Central de Alimentos BR' },
-];
+const API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3333' : 'http://localhost:3333';
 
-const localizacoesMock = [
-    { loc_id: '1', loc_nome: 'Depósito A' },
-    { loc_id: '2', loc_nome: 'Câmara Fria' },
-    { loc_id: '3', loc_nome: 'Loja Principal' },
-];
+export default function Usuarios({ route }) {
+	const auth = route?.params?.auth;
+	const token = auth?.token;
+	const usuarioLogado = auth?.usuario;
 
-const produtosMock = [
-    { pdt_id: '101', pdt_nome: 'Arroz 5kg', pdt_preco: 28.5 },
-    { pdt_id: '102', pdt_nome: 'Feijão 1kg', pdt_preco: 7.9 },
-    { pdt_id: '103', pdt_nome: 'Óleo 900ml', pdt_preco: 6.75 },
-    { pdt_id: '104', pdt_nome: 'Açúcar 1kg', pdt_preco: 4.95 },
-];
+	const [usuarios, setUsuarios] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [refreshing, setRefreshing] = useState(false);
+	const [erro, setErro] = useState('');
+	const [modalAberto, setModalAberto] = useState(false);
+	const [modoFormulario, setModoFormulario] = useState('editar');
+	const [usuarioSelecionado, setUsuarioSelecionado] = useState(null);
+	const [salvando, setSalvando] = useState(false);
+	const [form, setForm] = useState({
+		user_nome: '',
+		user_senha: '',
+		confirmarSenha: '',
+		user_nivel_acesso: 'user',
+		user_ativo: '1',
+	});
 
-function moeda(valor) {
-    return Number(valor || 0).toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    });
-}
+	const isAdmin = usuarioLogado?.user_nivel_acesso === 'admin';
+	const meuId = usuarioLogado?.user_id;
 
-function hojeISO() {
-    return new Date().toISOString().slice(0, 10);
-}
+	const resetarFormulario = useCallback(() => {
+		setForm({
+			user_nome: '',
+			user_senha: '',
+			confirmarSenha: '',
+			user_nivel_acesso: 'Usuário',
+			user_ativo: '1',
+		});
+	}, []);
 
-export default function Usuarios(){
+	const fecharModal = useCallback(() => {
+		setModalAberto(false);
+		setUsuarioSelecionado(null);
+		resetarFormulario();
+	}, [resetarFormulario]);
 
-    const [locId, setLocId] = useState('1');
-    const [fncdId, setFncdId] = useState('1');
-    const [entDataCompra, setEntDataCompra] = useState(hojeISO());
+	const atualizarCampo = (campo, valor) => {
+		setForm((prev) => ({ ...prev, [campo]: valor }));
+	};
 
-    const [pdtId, setPdtId] = useState('101');
-    const [entProdQtde, setEntProdQtde] = useState('1');
-    const [entProdLote, setEntProdLote] = useState('');
-    const [entProdValidade, setEntProdValidade] = useState('');
+	const carregarUsuarios = useCallback(async () => {
+		if (!token || !usuarioLogado?.user_id) {
+			setErro('Sessão inválida. Faça login novamente.');
+			setUsuarios([]);
+			setLoading(false);
+			setRefreshing(false);
+			return;
+		}
 
-    const [itensEntrada, setItensEntrada] = useState([]);
+		try {
+			setErro('');
 
-    const valorTotal = useMemo(() => {
-        return itensEntrada.reduce((acc, item) => acc + item.subtotal, 0);
-    }, [itensEntrada]);
+			const endpoint = isAdmin
+				? `${API_URL}/usuarios`
+				: `${API_URL}/usuarios/${usuarioLogado.user_id}`;
 
-    const totalItens = useMemo(() => {
-        return itensEntrada.reduce((acc, item) => acc + item.quantidade, 0);
-    }, [itensEntrada]);
+			const response = await fetch(endpoint, {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`,
+				},
+			});
 
-    function adicionarItem() {
-        const produto = produtosMock.find(p => p.pdt_id === pdtId);
-        const quantidade = Number(entProdQtde);
+			const data = await response.json();
 
-        if (!produto) {
-            Alert.alert('Produto inválido', 'Informe um ID de produto existente.');
-            return;
-        }
+			if (!response.ok) {
+				setErro(data?.erro || 'Não foi possível buscar usuários.');
+				setUsuarios([]);
+				return;
+			}
 
-        if (!Number.isFinite(quantidade) || quantidade <= 0) {
-            Alert.alert('Quantidade inválida', 'A quantidade deve ser maior que zero.');
-            return;
-        }
+			if (isAdmin) {
+				setUsuarios(Array.isArray(data?.usuarios) ? data.usuarios : []);
+			} else {
+				setUsuarios(data ? [data] : []);
+			}
+		} catch (error) {
+			setErro('Erro de conexão com a API.');
+			setUsuarios([]);
+		} finally {
+			setLoading(false);
+			setRefreshing(false);
+		}
+	}, [isAdmin, token, usuarioLogado]);
 
-        const novoItem = {
-            id: `${Date.now()}-${Math.random()}`,
-            pdt_id: produto.pdt_id,
-            pdt_nome: produto.pdt_nome,
-            quantidade,
-            lote: entProdLote || 'Sem lote',
-            validade: entProdValidade || 'Não informada',
-            valor_unitario: produto.pdt_preco,
-            subtotal: produto.pdt_preco * quantidade,
-        };
+	const abrirCriacao = () => {
+		setModoFormulario('criar');
+		setUsuarioSelecionado(null);
+		resetarFormulario();
+		setModalAberto(true);
+	};
 
-        setItensEntrada(prev => [...prev, novoItem]);
-        setEntProdQtde('1');
-        setEntProdLote('');
-        setEntProdValidade('');
-    }
+	const abrirEdicao = (usuario) => {
+		setModoFormulario('editar');
+		setUsuarioSelecionado(usuario);
+		setForm({
+			user_nome: usuario?.user_nome || '',
+			user_senha: '',
+			confirmarSenha: '',
+			user_nivel_acesso: usuario?.user_nivel_acesso || 'user',
+			user_ativo: String(usuario?.user_ativo ?? 1),
+		});
+		setModalAberto(true);
+	};
 
-    function salvarEntrada() {
-        if (!locId || !fncdId || !entDataCompra) {
-            Alert.alert('Campos obrigatórios', 'Preencha localização, fornecedor e data.');
-            return;
-        }
+	const salvarUsuario = async () => {
+		const nome = form.user_nome.trim();
+		const senha = form.user_senha.trim();
+		const confirmarSenha = form.confirmarSenha.trim();
 
-        if (itensEntrada.length === 0) {
-            Alert.alert('Sem produtos', 'Adicione ao menos um item na entrada.');
-            return;
-        }
+		if (!nome) {
+			Alert.alert('Campo obrigatório', 'Informe o nome do usuário.');
+			return;
+		}
 
-        const payload = {
-            entrada: {
-                loc_id: Number(locId),
-                fncd_id: Number(fncdId),
-                ent_data_compra: entDataCompra,
-                ent_valor_compra: Number(valorTotal.toFixed(2)),
-            },
-            entrada_produtos: itensEntrada.map(item => ({
-                pdt_id: Number(item.pdt_id),
-                ent_prod_qtde: item.quantidade,
-                ent_prod_lote: item.lote,
-            })),
-        };
+		if (modoFormulario === 'criar') {
+			if (!senha) {
+				Alert.alert('Campo obrigatório', 'Informe a senha do novo usuário.');
+				return;
+			}
 
-        Alert.alert(
-            'Entrada pronta para envio',
-            `Fornecedor: ${fornecedorAtual?.fncd_nome}\nItens: ${itensEntrada.length}\nTotal: ${moeda(valorTotal)}`
-        );
+			if (senha !== confirmarSenha) {
+				Alert.alert('Erro', 'As senhas não coincidem.');
+				return;
+			}
+		}
 
-        console.log('Payload entrada:', payload);
-    }
+		if (modoFormulario === 'editar' && senha && senha !== confirmarSenha) {
+			Alert.alert('Erro', 'As senhas não coincidem.');
+			return;
+		}
 
-    const fornecedorAtual = fornecedoresMock.find(f => f.fncd_id === fncdId);
-    const localizacaoAtual = localizacoesMock.find(l => l.loc_id === locId);
-    const produtoAtual = produtosMock.find(p => p.pdt_id === pdtId);
+		if (!token || !usuarioLogado?.user_id) {
+			Alert.alert('Sessão inválida', 'Faça login novamente.');
+			return;
+		}
 
-    return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            <Text style={styles.titulo}>Entrada de Produtos</Text>
-            <Text style={styles.subtitulo}>
-                Preencha os dados da entrada e adicione os produtos.
-            </Text>
+		try {
+			setSalvando(true);
 
-            <View style={styles.card}>
-                <Text style={styles.cardTitulo}>Dados da entrada</Text>
+			if (modoFormulario === 'criar') {
+				const response = await fetch(`${API_URL}/usuarios`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${token}`,
+					},
+					body: JSON.stringify({
+						user_nome: nome,
+						user_senha: senha,
+						user_nivel_acesso: form.user_nivel_acesso,
+					}),
+				});
 
-                <View style={styles.campo}>
-                    <Text style={styles.label}>localização</Text>
-                    <TextInput
-                        style={styles.input}
-                        keyboardType="numeric"
-                        value={locId}
-                        onChangeText={setLocId}
-                        placeholder="Ex.: 1"
-                    />
-                    <Text style={styles.itemTexto}>
-                        Atual: {localizacaoAtual?.loc_nome || 'Não encontrada'}
-                    </Text>
-                </View>
+				const data = await response.json();
 
-                <View style={styles.campo}>
-                    <Text style={styles.label}>Fornecedor</Text>
-                    <TextInput
-                        style={styles.input}
-                        keyboardType="numeric"
-                        value={fncdId}
-                        onChangeText={setFncdId}
-                        placeholder="Ex.: 1"
-                    />
-                    <Text style={styles.itemTexto}>
-                        Atual: {fornecedorAtual?.fncd_nome || 'Não encontrado'}
-                    </Text>
-                </View>
+				if (!response.ok) {
+					Alert.alert('Erro', data?.erro || 'Não foi possível criar o usuário.');
+					return;
+				}
 
-                <View style={styles.campo}>
-                    <Text style={styles.label}>Data da compra</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={entDataCompra}
-                        onChangeText={setEntDataCompra}
-                        placeholder="AAAA-MM-DD"
-                    />
-                </View>
-            </View>
+				Alert.alert('Sucesso', 'Usuário criado com sucesso.');
+				fecharModal();
+				carregarUsuarios();
+				return;
+			}
 
-            <View style={styles.card}>
-                <Text style={styles.cardTitulo}>Adicionar item</Text>
+			if (!usuarioSelecionado?.user_id) {
+				Alert.alert('Erro', 'Usuário selecionado inválido.');
+				return;
+			}
 
-                <View style={styles.campo}>
-                    <Text style={styles.label}>Produto</Text>
-                    <TextInput
-                        style={styles.input}
-                        keyboardType="numeric"
-                        value={pdtId}
-                        onChangeText={setPdtId}
-                        placeholder="Ex.: 101"
-                    />
-                    <Text style={styles.itemTexto}>
-                        Produto: {produtoAtual?.pdt_nome || 'Não encontrado'} | Unitário:{' '}
-                        {moeda(produtoAtual?.pdt_preco || 0)}
-                    </Text>
-                </View>
+			const payload = {
+				user_nome: nome,
+				user_nivel_acesso: isAdmin ? form.user_nivel_acesso : usuarioSelecionado.user_nivel_acesso,
+				user_ativo: isAdmin ? Number(form.user_ativo) : Number(usuarioSelecionado.user_ativo),
+			};
 
-                <View style={styles.linha}>
-                    <View style={styles.campo}>
-                        <Text style={styles.label}>Quantidade</Text>
-                        <TextInput
-                            style={styles.input}
-                            keyboardType="numeric"
-                            value={entProdQtde}
-                            onChangeText={setEntProdQtde}
-                        />
-                    </View>
+			if (senha) {
+				payload.user_senha = senha;
+			}
 
-                    <View style={styles.campo}>
-                        <Text style={styles.label}>Lote</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={entProdLote}
-                            onChangeText={setEntProdLote}
-                            placeholder="Ex.: LT2403"
-                        />
-                    </View>
-                </View>
+			const response = await fetch(`${API_URL}/usuarios/${usuarioSelecionado.user_id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`,
+				},
+				body: JSON.stringify(payload),
+			});
 
-                <View style={styles.campo}>
-                    <Text style={styles.label}>Validade (campo visual)</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={entProdValidade}
-                        onChangeText={setEntProdValidade}
-                        placeholder="Ex.: 2027-10-31"
-                    />
-                </View>
+			const data = await response.json();
 
-                <TouchableOpacity style={styles.botaoSecundario} onPress={adicionarItem}>
-                    <Text style={styles.botaoSecundarioTexto}>Adicionar produto à entrada</Text>
-                </TouchableOpacity>
-            </View>
+			if (!response.ok) {
+				Alert.alert('Erro', data?.erro || 'Não foi possível atualizar o usuário.');
+				return;
+			}
 
-            <View style={styles.card}>
-                <Text style={styles.cardTitulo}>Itens da entrada</Text>
+			Alert.alert('Sucesso', 'Usuário atualizado com sucesso.');
+			fecharModal();
+			carregarUsuarios();
+		} catch (error) {
+			Alert.alert('Erro de conexão', 'Não foi possível conectar com a API.');
+		} finally {
+			setSalvando(false);
+		}
+	};
 
-                {itensEntrada.length === 0 ? (
-                    <Text style={styles.semItens}>Nenhum item adicionado ainda.</Text>
-                ) : (
-                    itensEntrada.map(item => (
-                        <View style={styles.item} key={item.id}>
-                            <Text style={styles.itemTitulo}>
-                                {item.pdt_nome} (ID: {item.pdt_id})
-                            </Text>
-                            <Text style={styles.itemTexto}>Qtd: {item.quantidade}</Text>
-                            <Text style={styles.itemTexto}>Lote: {item.lote}</Text>
-                            <Text style={styles.itemTexto}>Validade: {item.validade}</Text>
-                            <Text style={styles.itemTexto}>
-                                Subtotal: <Text style={styles.destaque}>{moeda(item.subtotal)}</Text>
-                            </Text>
-                        </View>
-                    ))
-                )}
+	const desativarUsuario = (usuario) => {
+		Alert.alert(
+			'Desativar usuário',
+			`Deseja desativar ${usuario.user_nome}?`,
+			[
+				{ text: 'Cancelar', style: 'cancel' },
+				{
+					text: 'Desativar',
+					style: 'destructive',
+					onPress: async () => {
+						try {
+							const response = await fetch(`${API_URL}/usuarios/${usuario.user_id}`, {
+								method: 'DELETE',
+								headers: {
+									'Content-Type': 'application/json',
+									Authorization: `Bearer ${token}`,
+								},
+							});
 
-                <View style={styles.resumoLinha}>
-                    <Text style={styles.resumoLabel}>Quantidade total</Text>
-                    <Text style={styles.resumoValor}>{totalItens}</Text>
-                </View>
+							const data = await response.json();
 
-                <View style={styles.resumoLinha}>
-                    <Text style={styles.resumoLabel}>Valor total (`ent_valor_compra`)</Text>
-                    <Text style={[styles.resumoValor, styles.destaque]}>{moeda(valorTotal)}</Text>
-                </View>
+							if (!response.ok) {
+								Alert.alert('Erro', data?.erro || 'Não foi possível desativar o usuário.');
+								return;
+							}
 
-                <TouchableOpacity style={styles.botaoPrimario} onPress={salvarEntrada}>
-                    <Text style={styles.botaoPrimarioTexto}>Salvar entrada</Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
-    );
+							Alert.alert('Sucesso', 'Usuário desativado com sucesso.');
+							carregarUsuarios();
+						} catch (error) {
+							Alert.alert('Erro de conexão', 'Não foi possível conectar com a API.');
+						}
+					},
+				},
+			],
+		);
+	};
 
+	const podeEditarUsuario = (usuario) => isAdmin || usuario?.user_id === meuId;
+	const podeDesativarUsuario = (usuario) => isAdmin && usuario?.user_id !== meuId;
+
+	useEffect(() => {
+		carregarUsuarios();
+	}, [carregarUsuarios]);
+
+	function onRefresh() {
+		setRefreshing(true);
+		carregarUsuarios();
+	}
+
+	return (
+		<View style={styles.container}>
+			<Text style={styles.titulo}>Usuários</Text>
+			{/* <Text style={styles.subtitulo}>
+				{isAdmin
+					? 'Perfil admin: visualização de todos os usuários.'
+					: 'Perfil usuário: visualização apenas do próprio perfil.'}
+			</Text> */}
+
+			{isAdmin && (
+				<TouchableOpacity style={styles.novoButton} onPress={abrirCriacao}>
+					<Text style={styles.novoButtonText}>Adicionar usuário</Text>
+				</TouchableOpacity>
+			)}
+
+			{loading ? (
+				<View style={styles.centerBox}>
+					<ActivityIndicator size="large" color="#2563EB" />
+					<Text style={styles.infoText}>Carregando dados...</Text>
+				</View>
+			) : erro ? (
+				<View style={styles.centerBox}>
+					<Text style={styles.erroText}>{erro}</Text>
+					<TouchableOpacity style={styles.retryButton} onPress={carregarUsuarios}>
+						<Text style={styles.retryButtonText}>Tentar novamente</Text>
+					</TouchableOpacity>
+				</View>
+			) : (
+				<ScrollView
+					contentContainerStyle={styles.lista}
+					refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+				>
+					{usuarios.map((usuario) => (
+						<View key={String(usuario.user_id)} style={styles.card}>
+							<Text style={styles.nome}>{usuario.user_nome}</Text>
+							<Text style={styles.linha}>Status: {Number(usuario.user_ativo) === 1 ? 'Ativo' : 'Inativo'}</Text>
+
+							{isAdmin && (
+								<>
+									<Text style={styles.linha}>ID: {usuario.user_id}</Text>
+									<Text style={styles.linha}>
+										Nível de acesso: {usuario.user_nivel_acesso === 'admin' ? 'Administrador' : 'Usuário'}
+									</Text>
+								</>
+							)}
+
+							{podeEditarUsuario(usuario) && (
+								<TouchableOpacity
+									style={[styles.actionButton, styles.editButton]}
+									onPress={() => abrirEdicao(usuario)}
+								>
+									<Text style={styles.actionButtonText}>
+										{isAdmin ? 'Editar usuário' : 'Alterar usuário'}
+									</Text>
+								</TouchableOpacity>
+							)}
+
+							{podeDesativarUsuario(usuario) && (
+								<TouchableOpacity
+									style={[styles.actionButton, styles.deleteButton]}
+									onPress={() => desativarUsuario(usuario)}
+								>
+									<Text style={styles.actionButtonText}>Desativar</Text>
+								</TouchableOpacity>
+							)}
+						</View>
+					))}
+
+					{usuarios.length === 0 && (
+						<View style={styles.centerBox}>
+							<Text style={styles.infoText}>Nenhum usuário encontrado.</Text>
+						</View>
+					)}
+				</ScrollView>
+			)}
+
+			<Modal visible={modalAberto} transparent animationType="slide" onRequestClose={fecharModal}>
+				<View style={styles.modalOverlay}>
+					<View style={styles.modalCard}>
+						<Text style={styles.modalTitulo}>
+							{modoFormulario === 'criar' ? 'Adicionar usuário' : 'Editar usuário'}
+						</Text>
+
+						<ScrollView>
+							<Text style={styles.labelFormulario}>Nome</Text>
+							<TextInput
+								style={styles.inputFormulario}
+								placeholder="Nome do usuário"
+								placeholderTextColor="#94A3B8"
+								value={form.user_nome}
+								onChangeText={(valor) => atualizarCampo('user_nome', valor)}
+							/>
+
+							{isAdmin && (
+								<>
+									<Text style={styles.labelFormulario}>Nível de acesso</Text>
+									<TextInput
+										style={styles.inputFormulario}
+										placeholder="admin ou usuário"
+										placeholderTextColor="#94A3B8"
+										value={form.user_nivel_acesso}
+										onChangeText={(valor) => atualizarCampo('user_nivel_acesso', valor)}
+									/>
+									{modoFormulario === 'editar' && (
+										<>
+											<Text style={styles.labelFormulario}>Status</Text>
+											<TextInput
+												style={styles.inputFormulario}
+												placeholder="1 para ativo, 0 para inativo"
+												placeholderTextColor="#94A3B8"
+												value={form.user_ativo}
+												onChangeText={(valor) => atualizarCampo('user_ativo', valor)}
+											/>
+										</>
+									)}
+								</>
+							)}
+
+							<Text style={styles.labelFormulario}>
+								{modoFormulario === 'criar' ? 'Senha' : 'Nova senha (opcional)'}
+							</Text>
+							<TextInput
+								style={styles.inputFormulario}
+								placeholder={modoFormulario === 'criar' ? 'Senha' : 'Nova senha'}
+								placeholderTextColor="#94A3B8"
+								secureTextEntry
+								value={form.user_senha}
+								onChangeText={(valor) => atualizarCampo('user_senha', valor)}
+							/>
+
+							<Text style={styles.labelFormulario}>Confirmar senha</Text>
+							<TextInput
+								style={styles.inputFormulario}
+								placeholder="Confirmar senha"
+								placeholderTextColor="#94A3B8"
+								secureTextEntry
+								value={form.confirmarSenha}
+								onChangeText={(valor) => atualizarCampo('confirmarSenha', valor)}
+							/>
+
+							<View style={styles.modalAcoes}>
+								<TouchableOpacity style={styles.botaoSecundario} onPress={fecharModal}>
+									<Text style={styles.botaoSecundarioTexto}>Cancelar</Text>
+								</TouchableOpacity>
+
+								<TouchableOpacity
+									style={[styles.botaoPrimario, salvando && styles.botaoDesabilitado]}
+									onPress={salvarUsuario}
+									disabled={salvando}
+								>
+									<Text style={styles.botaoPrimarioTexto}>
+										{salvando ? 'Salvando...' : 'Salvar'}
+									</Text>
+								</TouchableOpacity>
+							</View>
+						</ScrollView>
+					</View>
+				</View>
+			</Modal>
+		</View>
+	);
 }
