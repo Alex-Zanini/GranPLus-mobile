@@ -1,7 +1,9 @@
 import { View, Text } from "react-native";
 import styles from "./styles";
 
-export default function Dashboard() {
+export default function Dashboard({ route }) {
+  const nomeUsuario = route?.params?.auth?.usuario?.user_nome || "Usuário";
+
   const dados = [
     { id: 1, nome: "Teclado gamer", preco: 50, quantidade: 10 },
     { id: 2, nome: "Mouse", preco: 20, quantidade: 25 },
@@ -18,7 +20,7 @@ export default function Dashboard() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Bem vindo ao sistema Granplus, *nome do usuário*</Text>
+      <Text style={styles.header}>Bem vindo ao sistema Granplus, {nomeUsuario}</Text>
       <Text style={styles.subHeader}>Resumo Diário:</Text>
       <View style={styles.dailySummaryContainer}>
         <Text style={styles.dailySummaryText}>Entradas Hoje: {entradasHoje}</Text>

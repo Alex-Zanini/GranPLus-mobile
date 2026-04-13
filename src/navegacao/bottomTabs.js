@@ -11,7 +11,7 @@ export default function MyTabs({ route }) {
     const auth = route?.params?.auth;
   return (
     <Tab.Navigator>
-      <Tab.Screen name="Dashboard" component={Dashboard} />
+      <Tab.Screen name="Dashboard" component={Dashboard} initialParams={{ auth }} />
       <Tab.Screen name="Estoque" component={Estoque} />
       <Tab.Screen name="Produtos" component={Produtos} />
       <Tab.Screen name="Entrada" component={entrada_produtos} />
