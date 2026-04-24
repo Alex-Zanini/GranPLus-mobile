@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import RootStack from "./src/navegacao/stack"
 
 export default function App() {

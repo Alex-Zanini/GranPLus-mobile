@@ -1,3 +1,4 @@
+<<<<<<< main
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Modal, Alert } from 'react-native';
 import styles from './styles';
@@ -151,4 +152,14 @@ export default function Estoque() {
       </Modal>
     </View>
   );
+=======
+import {View, Text} from "react-native"
+
+export default function Estoque(){
+    return (
+        <View>
+            <Text>Saidas</Text>
+        </View>
+    )
+>>>>>>> master
 }
